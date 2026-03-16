@@ -1,22 +1,31 @@
-import numpy as np
-from scipy.io.wavfile import write
-
-# Create a simple test audio: 2 seconds of 440 Hz tone
-sr = 44100
-duration = 2
-t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-y = 0.5 * np.sin(2 * np.pi * 440 * t)
-
-# Save as test.wav
-write('test.wav', sr, (y * 32767).astype(np.int16))
-print("test.wav created")
-
-# Now, sign it
+import streamlit as st
 import subprocess
-subprocess.run(['python', 'signer.py', 'test.wav', 'signed.wav'])
 
-# Verify signed
-subprocess.run(['python', 'verifier.py', 'signed.wav'])
+st.title("Audio Authenticity Checker")
 
-# Verify original
-subprocess.run(['python', 'verifier.py', 'test.wav'])
+uploaded_file = st.file_uploader("Upload WAV Audio", type=["wav"])
+
+if uploaded_file is not None:
+
+    with open("uploaded.wav", "wb") as f:
+        f.write(uploaded_file.read())
+
+    st.audio("uploaded.wav")
+
+    if st.button("Add Watermark"):
+        subprocess.run(["python", "signer.py", "uploaded.wav", "signed.wav"])
+        st.success("Watermark added")
+
+    if st.button("Verify Audio"):
+        result = subprocess.run(
+            ["python", "verifier.py", "uploaded.wav"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout.strip()
+
+        if "ORIGINAL" in output:
+            st.success("✔ ORIGINAL AUDIO VERIFIED")
+        else:
+            st.error("✖ EDITED / TAMPERED AUDIO")
