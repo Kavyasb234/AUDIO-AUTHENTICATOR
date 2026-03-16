@@ -3,7 +3,7 @@ import subprocess
 
 st.title("Audio Authenticity Checker")
 
-uploaded_file = st.file_uploader("Upload WAV Audio", type=["wav"])
+uploaded_file = st.file_uploader("Upload WAV Audio", type=["wav","mp3"])
 
 if uploaded_file is not None:
 
