@@ -1,45 +1,43 @@
+
 import streamlit as st
 import subprocess
 import os
 
 st.title("Audio Authenticity Checker")
 
-uploaded_file = st.file_uploader("Upload WAV Audio", type=["wav","mp3"])
+uploaded_file = st.file_uploader("Upload Audio File", type=["wav"])
 
 if uploaded_file is not None:
 
-    # Save uploaded file
+    # save uploaded file
     with open("temp_audio.wav", "wb") as f:
         f.write(uploaded_file.read())
 
     st.audio("temp_audio.wav")
 
-    # ADD WATERMARK
+    # add watermark
     if st.button("Add Watermark"):
-        subprocess.run(["python", "signer.py", "temp_audio.wav", "signed.wav"])
 
-        st.session_state["signed_file"] = "signed.wav"
-        st.success("Watermark added")
+        subprocess.run(["python", "signer.py"])
 
-    # VERIFY AUDIO
+        if os.path.exists("signed.wav"):
+            st.success("Watermark added successfully")
+            st.audio("signed.wav")
+        else:
+            st.error("Watermark generation failed")
+
+    # verify watermark
     if st.button("Verify Audio"):
 
-        # check if watermark file exists
-        file_to_verify = st.session_state.get("signed_file")
+        result = subprocess.run(
+            ["python", "verifier.py"],
+            capture_output=True,
+            text=True
+        )
 
-        if file_to_verify and os.path.exists(file_to_verify):
+        output = result.stdout.strip()
 
-            result = subprocess.run(
-                ["python", "verifier.py", file_to_verify],
-                capture_output=True,
-                text=True
-            )
-
-            if "OK" in result.stdout or "INTEGRITY OK" in result.stdout:
-                st.success("ORIGINAL AUDIO VERIFIED")
-
-            else:
-                st.error("EDITED / TAMPERED AUDIO")
-
+        if "ORIGINAL AUDIO VERIFIED" in output:
+            st.success("✔ ORIGINAL AUDIO VERIFIED")
         else:
-            st.warning("Please click 'Add Watermark' first")
+            st.error("✖ EDITED / TAMPERED AUDIO")
