@@ -1,41 +1,23 @@
 import numpy as np
-from scipy.io.wavfile import read
-from scipy.fft import fft, fftfreq
-import sys
+from scipy.io import wavfile
 
-if len(sys.argv) != 2:
-    print("Usage: python verifier.py <wav_file>")
-    sys.exit(1)
+input_file = "signed.wav"
 
-file_path = sys.argv[1]
+sr, data = wavfile.read(input_file)
 
-# Load the audio file
-sr, data = read(file_path)
-y = data.astype(np.float32) / 32767.0
+# convert stereo to mono
+if len(data.shape) > 1:
+    data = data.mean(axis=1)
 
-# Compute FFT
-N = len(y)
-yf = fft(y)
-xf = fftfreq(N, 1 / sr)
+data = data.astype(np.float32)
 
-# Find frequencies in the range 18.5 kHz to 19 kHz
-mask = (xf >= 18500) & (xf <= 19000)
-indices = np.where(mask)[0]
+fft = np.abs(np.fft.rfft(data))
+freqs = np.fft.rfftfreq(len(data), 1/sr)
 
-if len(indices) == 0:
-    print("ALERT: INTEGRITY COMPROMISED")
-    sys.exit(0)
+mask = (freqs > 18500) & (freqs < 19000)
 
-# Check the maximum magnitude in the frequency band
-max_magnitude = np.max(np.abs(yf[indices]))
-
-# Threshold: empirical, based on added amplitude
-# For amplitude 0.01, N samples, peak ~ 0.01 * N / 2
-# But to be safe, set threshold to 10 (for short audio, adjust)
-threshold = 10  # Adjust based on audio length
-
-if max_magnitude > threshold:
+if np.max(fft[mask]) > 100000:
     print("ORIGINAL AUDIO VERIFIED")
 else:
-    print("EDITED/TAMPERED AUDIO ")
+    print("EDITED / TAMPERED AUDIO")
 
