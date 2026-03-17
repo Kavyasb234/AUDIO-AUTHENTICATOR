@@ -1,51 +1,37 @@
 import streamlit as st
-import subprocess
-import os
+import time
+import random
+from detector import LatencyDetector
 
-st.title("Audio Authenticity Checker")
+st.title("Latency-Based SQL Injection Detector")
 
-uploaded_file = st.file_uploader("Upload Audio File", type=["wav"])
+st.write("Detects time-based SQL injection using response latency.")
 
-# Track if watermark was added in this session
-if "watermark_added" not in st.session_state:
-    st.session_state.watermark_added = False
+# Only ONE control (optional)
+delay = st.slider("Injected Delay (seconds)", 1.0, 5.0, 4.0)
 
-if uploaded_file is not None:
+if st.button("Start Monitoring"):
 
-    # Save uploaded file
-    with open("temp_audio.wav", "wb") as f:
-        f.write(uploaded_file.read())
+    detector = LatencyDetector()
 
-    st.audio("temp_audio.wav")
+    for i in range(20):  # fixed small steps
+        start_time = time.time()
 
-    # ADD WATERMARK
-    if st.button("Add Watermark"):
-        subprocess.run(["python", "signer.py"])
-        st.session_state.watermark_added = True
+        # normal query
+        time.sleep(random.uniform(0.01, 0.1))
 
-        if os.path.exists("signed.wav"):
-            st.success("Watermark added successfully")
-            st.audio("signed.wav")
+        # simulate attack
+        time.sleep(delay)
+
+        latency = time.time() - start_time
+
+        detected, msg = detector.detect(latency)
+
+        if detected:
+            st.error(msg)
         else:
-            st.error("Watermark generation failed")
+            st.success(msg)
 
-    # VERIFY AUDIO
-    if st.button("Verify Audio"):
-
-        # Decide which file to verify
-        file_to_verify = "signed.wav" if st.session_state.watermark_added else "temp_audio.wav"
-
-        result = subprocess.run(
-            ["python", "verifier.py", file_to_verify],
-            capture_output=True,
-            text=True
-        )
-
-        output = result.stdout.strip()
-
-        if "ORIGINAL AUDIO VERIFIED" in output:
-            st.success("✔ ORIGINAL AUDIO VERIFIED")
-        else:
-            st.error("✖ EDITED / TAMPERED AUDIO")
-
-            
+        time.sleep(0.3)
+        
+        
